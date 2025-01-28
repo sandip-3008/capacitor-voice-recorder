@@ -157,7 +157,6 @@ Stops the audio recording and returns the recording data.
 |--------------|------------------------------------------------|
 | `base64`     | The recorded audio data in Base64 format.      |
 | `msDuration` | The duration of the recording in milliseconds. |
-| `mimeType`   | The MIME type of the recorded audio.           |
 | `size`       | The size of the recorded audio.                |
 
 | Error Code        | Description                                          |
