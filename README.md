@@ -54,11 +54,6 @@ The `@lgicc/capacitor-voice-recorder` plugin allows you to record audio on Andro
 With the addition of recieving a `frequencyData` stream to show a visual graph of the audio.
 
 
-## Overview
-
-The `@lgicc/capacitor-voice-recorder` plugin allows you to record audio on Android, iOS, and Web platforms.
-With the addition of recieving a `frequencyData` stream to show a visual graph of the audio.
-
 ## Functions
 
 ### canRecord
