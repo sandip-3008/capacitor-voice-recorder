@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="hydrated">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Example Capacitor App</title>
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="stylesheet" href="main.css">
+  </head>
+  <body>
+    <main>
+      <h1>Voice Test Project</h1>
+      <p>
+        This project can be used to test out the functionality of the plugin. Nothing in the
+        <em>example-app/</em> folder will be published to npm when using this template, so you can create away!
+      </p>
+      <div class="flex flex-column">
+        <button onclick="startRecording()">🎙 Start Recording</button>
+        <button onclick="stopRecording()">⏹️ Stop Recording</button>
+        <button onclick="requestPermission()">🙏 Please give permission</button>
+        <p>Status: <span id="🪪"></span></p>
+      </div>
+    </main>
+    <div class="waveform-wrapper">
+      <canvas id="🖼️" height="50px" width="500px"></canvas>
+    </div>
+
+
+    <script src="./main.js" type="module"></script>
+  </body>
+</html>
