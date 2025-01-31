@@ -1,6 +1,4 @@
 import { CapacitorVoiceRecorder } from '@lgicc/capacitor-voice-recorder';
-import { Capacitor } from '@capacitor/core';
-
 
 const currentStatusEl = document.getElementById('🪪');
 const canvasEl = document.getElementById('🖼️');
@@ -116,9 +114,6 @@ window.requestPermission = async () => {
 let dataset = [];
 let targetDataset = [];
 let defaultHeight = 5;
-let animationTimeInMs = 100;
-
-let decibelBuffer = [];
 
 while (barCount > dataset.length) {
     dataset.push(defaultHeight);

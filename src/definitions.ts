@@ -29,6 +29,6 @@ export interface CapacitorVoiceRecorderPlugin {
     status: RecordStatus;
   }>;
 
-  addListener(eventName: 'frequencyData', listenerFunc: (data: string) => void): Promise<PluginListenerHandle>;
+  addListener(eventName: 'frequencyData', listenerFunc: (data: {base64: string}) => void): Promise<PluginListenerHandle>;
   removeAllListeners(): Promise<void>;
 }
