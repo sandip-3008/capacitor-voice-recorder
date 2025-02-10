@@ -11,14 +11,14 @@ class CustomAudioRecorder {
     public var isRecording = false
     public var isPaused = false
     private var recordingStartTime: Date?
-    private let analyzer: FrequencyAnalyser
+    private let analyzer: FrequencyAnalyzer
     private let processingQueue = DispatchQueue(label: "audio.processing.queue")
     
     private var callback: (String) -> Void
     
     init(callback: @escaping (String) -> Void = { _ in }) {
         self.callback = callback
-        self.analyzer = FrequencyAnalyser(fftSize)
+        self.analyzer = FrequencyAnalyzer(fftSize)
         configureAudioSession()
     }
     
@@ -108,7 +108,7 @@ class CustomAudioRecorder {
         
         return RecordingResult(
             data: data,
-            msDuration: duration,
+            msDuration: duration * 1000,
             size: data.count
         )
     }
