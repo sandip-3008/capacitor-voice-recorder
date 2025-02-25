@@ -255,7 +255,7 @@ You can find each version in its own dedicated branch.
 
 | Plugin Version | Capacitor Version | Branch |
 |----------------|-------------------|--------|
-| 7.*            | 7                 | main   |
+| 6.*            | 6                 | main   |
 
 ## License
 
