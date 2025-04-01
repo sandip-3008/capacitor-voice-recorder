@@ -1,21 +1,17 @@
 import { WebPlugin } from '@capacitor/core';
+import { IMediaRecorder, MediaRecorder, register } from 'extendable-media-recorder';
+import { connect } from 'extendable-media-recorder-wav-encoder';
 
-import type {
-  CanRecordStatus,
-  CapacitorVoiceRecorderPlugin,
-  RecordingData,
-  RecordStatus} from './definitions';
-import {
-  RecordingError
-} from './definitions';
-
+import type { CanRecordStatus, CapacitorVoiceRecorderPlugin, RecordingData, RecordStatus } from './definitions';
+import { RecordingError } from './definitions';
 
 export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoiceRecorderPlugin {
-  private _mediaRecorder?: MediaRecorder;
+  private _mediaRecorder?: IMediaRecorder;
   private _mediaStream?: MediaStream;
   mimeType: string = 'audio/wav' as const;
   private _chunks: any[] = [];
   private _startedRecordingAt?: Date;
+  private _isRegistered = false;
 
   constructor() {
     super();
@@ -47,12 +43,10 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
     }
 
     try {
-      return navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          stream.getTracks().forEach((track) => track.stop());
-          return { isGranted: true };
-        });
+      return navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        stream.getTracks().forEach((track) => track.stop());
+        return { isGranted: true };
+      });
     } catch (error) {
       return Promise.reject(RecordingError.MISSING_MICROPHONE_PERMISSION);
     }
@@ -60,7 +54,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
 
   public async startRecording(): Promise<void> {
     if (this._mediaRecorder != null) {
-        return Promise.reject(RecordingError.MICROPHONE_IN_USE);
+      return Promise.reject(RecordingError.MICROPHONE_IN_USE);
     }
 
     const hasPermission = await this.canRecord();
@@ -69,9 +63,13 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
       return Promise.reject(RecordingError.MISSING_MICROPHONE_PERMISSION);
     }
 
+    if (!this._isRegistered) {
+      await register(await connect());
+      this._isRegistered = true;
+    }
 
     this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this._mediaRecorder = new MediaRecorder(this._mediaStream);
+    this._mediaRecorder = new MediaRecorder(this._mediaStream, { mimeType: 'audio/wav' });
 
     this._mediaRecorder.onstart = () => {
       this._startedRecordingAt = new Date();
@@ -85,7 +83,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
 
     const dataArray = new Uint8Array(analyser.fftSize);
     const source = audioContext.createMediaStreamSource(this._mediaStream);
-    source.connect(analyser)
+    source.connect(analyser);
 
     this._mediaRecorder.ondataavailable = async (event: any) => {
       this._chunks.push(event.data);
@@ -100,7 +98,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
         return Promise.reject(RecordingError.NOT_RECORDING);
       }
 
-      this._mediaRecorder.stream.getTracks().forEach((track: any) => track.stop());
+      this._mediaRecorder.stop();
       this._prepareInstanceForNextOperation();
 
       this._startedRecordingAt = undefined;
@@ -123,7 +121,6 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
     if (mimeType == null) {
       return Promise.reject(RecordingError.DEVICE_NOT_SUPPORTED);
     }
-
 
     this._prepareInstanceForNextOperation();
 
@@ -175,7 +172,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
     }
 
     if (this._mediaRecorder.state === 'recording') {
-      return Promise.resolve({ status: 'RECORDING'});
+      return Promise.resolve({ status: 'RECORDING' });
     } else if (this._mediaRecorder.state === 'paused') {
       return Promise.resolve({ status: 'PAUSED' });
     } else {
@@ -199,7 +196,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
-        const base64Data = dataUrl.split(',')[1];  // Extract base64 part
+        const base64Data = dataUrl.split(',')[1]; // Extract base64 part
         resolve(base64Data);
       };
       reader.onerror = reject;
@@ -207,4 +204,3 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
     });
   }
 }
-

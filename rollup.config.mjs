@@ -7,6 +7,8 @@ export default {
       name: 'capacitorCapacitorVoiceRecorder',
       globals: {
         '@capacitor/core': 'capacitorExports',
+        'extendable-media-recorder': 'extendableMediaRecorder',
+        'extendable-media-recorder-wav-encoder': 'extendableMediaRecorderWavEncoder',
       },
       sourcemap: true,
       inlineDynamicImports: true,
@@ -18,5 +20,5 @@ export default {
       inlineDynamicImports: true,
     },
   ],
-  external: ['@capacitor/core'],
+  external: ['@capacitor/core', 'extendable-media-recorder', 'extendable-media-recorder-wav-encoder'],
 };

@@ -1,6 +1,6 @@
 {
   "name": "@lgicc/capacitor-voice-recorder",
-  "version": "6.0.4",
+  "version": "6.0.5",
   "description": "Enables Cross-Platform Voice Recording with capacitor and the capability of receiving frequency data to show cool graphs.",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -76,5 +76,9 @@
     "android": {
       "src": "android"
     }
+  },
+  "dependencies": {
+    "extendable-media-recorder": "^9.2.23",
+    "extendable-media-recorder-wav-encoder": "^7.0.127"
   }
 }
