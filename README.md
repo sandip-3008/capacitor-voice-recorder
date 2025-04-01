@@ -6,11 +6,11 @@
 <p align="center">Simple Voice Recording with capacitor and the capability of receiving frequency data to show cool graphs</p>
 
 <p align="center">
-  <img src="https://img.shields.io/maintenance/yes/2024" />
+  <img src="https://img.shields.io/maintenance/yes/9999" />
   <a href="https://www.npmjs.com/package/@lgicc/capacitor-voice-recorder"><img src="https://img.shields.io/npm/l/capacitor-voice-recorder" /></a>
 <br>
-  <a href="https://www.npmjs.com/package/@lgicc/capacitor-voice-recorder"><img src="https://img.shields.io/npm/dw/capacitor-voice-recorder" /></a>
-  <a href="https://www.npmjs.com/package/@lgicc/capacitor-voice-recorder"><img src="https://img.shields.io/npm/v/capacitor-voice-recorder" /></a>
+  <a href="https://www.npmjs.com/package/@lgicc/capacitor-voice-recorder"><img src="https://img.shields.io/npm/dw/@lgicc/capacitor-voice-recorder" /></a>
+  <a href="https://www.npmjs.com/package/@lgicc/capacitor-voice-recorder"><img src="https://img.shields.io/npm/v/@lgicc/capacitor-voice-recorder" /></a>
 </p>
 
 
