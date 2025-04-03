@@ -84,6 +84,15 @@ window.stopRecording = async () => {
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
 
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'audio.wav');
+
+        // test audio data
+        fetch('http://localhost:3000',{
+            method: 'POST',
+            body: formData,
+        })
+
         console.log('playing audio');
         audio.play().catch(error => {
             console.error('Audio playback failed:', error);

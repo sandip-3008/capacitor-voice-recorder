@@ -1,6 +1,7 @@
 import { WebPlugin } from '@capacitor/core';
-import { IMediaRecorder, MediaRecorder, register } from 'extendable-media-recorder';
-import { connect } from 'extendable-media-recorder-wav-encoder';
+import type { IMediaRecorder} from 'extendable-media-recorder';
+import {deregister, MediaRecorder, register} from 'extendable-media-recorder';
+import {connect, disconnect} from 'extendable-media-recorder-wav-encoder';
 
 import type { CanRecordStatus, CapacitorVoiceRecorderPlugin, RecordingData, RecordStatus } from './definitions';
 import { RecordingError } from './definitions';
@@ -11,7 +12,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
   mimeType: string = 'audio/wav' as const;
   private _chunks: any[] = [];
   private _startedRecordingAt?: Date;
-  private _isRegistered = false;
+  private _encoder: any;
 
   constructor() {
     super();
@@ -63,10 +64,8 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
       return Promise.reject(RecordingError.MISSING_MICROPHONE_PERMISSION);
     }
 
-    if (!this._isRegistered) {
-      await register(await connect());
-      this._isRegistered = true;
-    }
+    this._encoder = await connect();
+    await register(this._encoder);
 
     this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     this._mediaRecorder = new MediaRecorder(this._mediaStream, { mimeType: 'audio/wav' });
@@ -132,6 +131,9 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
     this._mediaStream = undefined;
     this._mediaRecorder = undefined;
     this._chunks = [];
+    await deregister(this._encoder);
+    await disconnect(this._encoder);
+    this._encoder = undefined;
 
     return {
       base64: await this._blobToBase64(blobVoiceRecording),
