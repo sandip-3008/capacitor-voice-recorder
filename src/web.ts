@@ -60,7 +60,7 @@ export class CapacitorVoiceRecorderWeb extends WebPlugin implements CapacitorVoi
 
     const hasPermission = await this.canRecord();
 
-    if (!hasPermission.status === 'GRANTED') {
+    if (hasPermission.status === 'GRANTED') {
       return Promise.reject(RecordingError.MISSING_MICROPHONE_PERMISSION);
     }
 
