@@ -248,14 +248,11 @@ The plugin will return the recording in `audio/wav` format.
 As this plugin focuses on the recording aspect, it does not provide any conversion between formats.
 
 ## Compatibility
-
-Versioning follows Capacitor versioning.
-Major versions of the plugin are compatible with major versions of Capacitor.
-You can find each version in its own dedicated branch.
+6.* should work with Capacitor 7 aswell.
 
 | Plugin Version | Capacitor Version | Branch |
 |----------------|-------------------|--------|
-| 6.*            | 6                 | main   |
+| 6.*            | 6+                | main   |
 
 ## License
 
