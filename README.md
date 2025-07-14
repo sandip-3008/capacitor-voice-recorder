@@ -234,8 +234,8 @@ The data should be nearly the same on each platform to draw. Due to platform dif
 As how to draw is not the scope of this project, but your anyway want to know how to draw cool graphs, feel free to contact me.
 ```typescript
 (async () => {
-  CapacitorVoiceRecorder.addListener('frequencyData', ({data}) => {
-    const frequencyData = new Uint8Array(atob(data).split('').map(c => c.charCodeAt(0)));
+  CapacitorVoiceRecorder.addListener('frequencyData', ({base64}) => {
+    const frequencyData = new Uint8Array(atob(base64).split('').map(c => c.charCodeAt(0)));
     // frequencyData is a array of numbers between 0 and 255
     console.log(frequencyData);
   });
