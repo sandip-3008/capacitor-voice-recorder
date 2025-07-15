@@ -49,7 +49,7 @@ class CustomAudioRecorder {
             do {
                 try file.write(from: buffer)
             } catch {
-                print("Fehler beim Schreiben des Audio-Puffers: \(error.localizedDescription)")
+                print("Failed to write audio buffer: \(error.localizedDescription)")
             }
             
             // Process frequencies

@@ -213,11 +213,11 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     
     @objc func getCurrentStatus(_ call: CAPPluginCall) {
         var status: String = "NOT_RECORDING"
-    
-        if recorder.isRecording {
-            status = "RECORDING"
-        } else if recorder.isPaused {
+
+        if recorder.isPaused {
             status = "PAUSED"
+        } else if recorder.isRecording {
+            status = "RECORDING"
         }
         
         

@@ -1,4 +1,4 @@
-import { PluginListenerHandle } from '@capacitor/core';
+import type { PluginListenerHandle } from '@capacitor/core';
 
 export type RecordStatus = 'RECORDING' | 'PAUSED' | 'NOT_RECORDING';
 export type CanRecordStatus = 'NOT_GRANTED' | 'DISABLED_BY_USER' | RecordingError.DEVICE_NOT_SUPPORTED | 'GRANTED';
