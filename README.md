@@ -234,8 +234,8 @@ The data should be nearly the same on each platform to draw. Due to platform dif
 As how to draw is not the scope of this project, but your anyway want to know how to draw cool graphs, feel free to contact me.
 ```typescript
 (async () => {
-  CapacitorVoiceRecorder.addListener('frequencyData', ({data}) => {
-    const frequencyData = new Uint8Array(atob(data).split('').map(c => c.charCodeAt(0)));
+  CapacitorVoiceRecorder.addListener('frequencyData', ({base64}) => {
+    const frequencyData = new Uint8Array(atob(base64).split('').map(c => c.charCodeAt(0)));
     // frequencyData is a array of numbers between 0 and 255
     console.log(frequencyData);
   });
@@ -248,14 +248,11 @@ The plugin will return the recording in `audio/wav` format.
 As this plugin focuses on the recording aspect, it does not provide any conversion between formats.
 
 ## Compatibility
-
-Versioning follows Capacitor versioning.
-Major versions of the plugin are compatible with major versions of Capacitor.
-You can find each version in its own dedicated branch.
+6.* should work with Capacitor 7 aswell.
 
 | Plugin Version | Capacitor Version | Branch |
 |----------------|-------------------|--------|
-| 6.*            | 6                 | main   |
+| 6.*            | 6+                | main   |
 
 ## License
 
