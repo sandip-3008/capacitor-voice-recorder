@@ -1,20 +1,16 @@
 package com.lgicc.capacitor.voice_recorder;
 
-import static androidx.core.content.ContextCompat.startActivity;
-
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.util.Base64;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
@@ -33,10 +29,8 @@ import com.lgicc.capacitor.voice_recorder.recording.CustomAudioRecorder;
 import com.lgicc.capacitor.voice_recorder.recording.FrequencyAnalyser;
 import com.lgicc.capacitor.voice_recorder.recording.RecordingResult;
 
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 @CapacitorPlugin(
         name = "CapacitorVoiceRecorder",
