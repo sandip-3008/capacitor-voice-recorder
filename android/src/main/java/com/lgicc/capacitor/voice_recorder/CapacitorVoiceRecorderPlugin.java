@@ -1,20 +1,16 @@
 package com.lgicc.capacitor.voice_recorder;
 
-import static androidx.core.content.ContextCompat.startActivity;
-
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.util.Base64;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
@@ -33,9 +29,8 @@ import com.lgicc.capacitor.voice_recorder.recording.CustomAudioRecorder;
 import com.lgicc.capacitor.voice_recorder.recording.FrequencyAnalyser;
 import com.lgicc.capacitor.voice_recorder.recording.RecordingResult;
 
-import java.util.Arrays;
+import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 @CapacitorPlugin(
         name = "CapacitorVoiceRecorder",
@@ -120,18 +115,21 @@ public class CapacitorVoiceRecorderPlugin extends Plugin {
     }
 
     private void showDeniedMicrophoneDialog() {
+        String language = Locale.getDefault().getLanguage();
+        Translations.TranslationEntry translation = Translations.getTranslation(language);
+
         // Show a dialog explaining why the microphone is needed
         new AlertDialog.Builder(getContext())
-                .setTitle("Microphone Permission Denied")
-                .setMessage("This feature requires access to the microphone. Please enable it in the app settings.")
-                .setPositiveButton("Go to Settings", (dialog, which) -> {
+                .setTitle(translation.title)
+                .setMessage(translation.description)
+                .setPositiveButton(translation.goToSettings, (dialog, which) -> {
                     // Redirect to app settings
                     Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                     Uri uri = Uri.fromParts("package", getContext().getPackageName(), null);
                     intent.setData(uri);
                     getContext().startActivity(intent);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(translation.decline, null)
                 .show();
     }
 
