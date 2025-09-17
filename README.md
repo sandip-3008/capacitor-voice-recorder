@@ -62,7 +62,7 @@ Check if the device/browser can record audio.
 
 ```typescript
 (async () => {
-  const { status } = await VoiceRecorder.canRecord();
+  const { status } = await CapacitorVoiceRecorder.canRecord();
   console.log(status);
 })();
 ```
@@ -80,7 +80,7 @@ Request audio recording permission from the user.
 
 ```typescript
 (async () => {
-  const { status } = await VoiceRecorder.requestPermission();
+  const { status } = await CapacitorVoiceRecorder.requestPermission();
   console.log(status);
 })();
 ```
@@ -104,7 +104,7 @@ Start the audio recording.
 ```typescript
 (async () => {
     try {
-        await VoiceRecorder.startRecording();
+        await CapacitorVoiceRecorder.startRecording();
     } catch (error) {
         console.log(error);
     }
@@ -130,7 +130,7 @@ Stops the audio recording and returns the recording data.
 (async () => {
   try {
     // retrieving audio data
-    const result = await VoiceRecorder.stopRecording();
+    const result = await CapacitorVoiceRecorder.stopRecording();
     
     // parsing the data to a Uint8Array
     const data = new Uint8Array(atob(result.base64).split('').map(c => c.charCodeAt(0)));
@@ -171,7 +171,7 @@ Pause the ongoing audio recording.
 ```typescript
 (async () => {
   try { 
-    await VoiceRecorder.pauseRecording();
+    await CapacitorVoiceRecorder.pauseRecording();
   } catch (error) {
     console.log(error);
   }
@@ -194,7 +194,7 @@ Resumes a paused audio recording.
 ```typescript
 (async () => {
   try {
-    await VoiceRecorder.resumeRecording();
+    await CapacitorVoiceRecorder.resumeRecording();
   } catch (error) {
     console.log(error);
   }
@@ -217,7 +217,7 @@ Retrieves the current status of the recorder.
 
 ```typescript
 (async () => {
-  const { status } = await VoiceRecorder.resumeRecording();
+  const { status } = await CapacitorVoiceRecorder.resumeRecording();
   console.log(status);
 })();
 ```
