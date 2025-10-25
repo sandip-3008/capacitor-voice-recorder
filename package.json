@@ -1,6 +1,6 @@
 {
-  "name": "@lgicc/capacitor-voice-recorder",
-  "version": "6.0.11",
+  "name": "@sandip-3008/capacitor-voice-recorder",
+  "version": "6.0.12",
   "description": "Enables Cross-Platform Voice Recording with capacitor and the capability of receiving frequency data to show cool graphs.",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
