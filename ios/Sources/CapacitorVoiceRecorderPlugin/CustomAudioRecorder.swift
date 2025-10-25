@@ -66,16 +66,16 @@ class CustomAudioRecorder {
         
         engine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) {
             [weak self] (buffer, time) in
-            guard let self = self else { return }
+            guard let self = self, let audioFile = self.audioFile else { return }
             
             // Write to file on processing queue to avoid blocking
             self.processingQueue.async {
                 do {
-                    try file.write(from: buffer)
+                    try audioFile.write(from: buffer)
                 } catch {
                     print("Failed to write audio buffer: \(error)")
                     print("Buffer format: \(buffer.format)")
-                    print("File format: \(file.processingFormat)")
+                    print("File format: \(audioFile.processingFormat)")
                 }
             }
             
