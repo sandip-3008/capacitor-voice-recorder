@@ -4,10 +4,6 @@ import AVFAudio
 import CoreLocation
 import Capacitor
 
-/**
- * Please read the Capacitor iOS Plugin Development Guide
- * here: https://capacitorjs.com/docs/plugins/ios
- */
 @objc(CapacitorVoiceRecorder)
 public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CapacitorVoiceRecorderPlugin"
@@ -15,47 +11,55 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "requestPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "canRecord", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pauseRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resumeRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCurrentStatus", returnType: CAPPluginReturnPromise),
     ]
-    private var recorder: CustomAudioRecorder = CustomAudioRecorder();
+    
+    // CRITICAL FIX: Initialize recorder only once
+    private var recorder: CustomAudioRecorder!
     private let translations: Translations = Translations()
     
+    public override func load() {
+        super.load()
+        print("CapacitorVoiceRecorder: Plugin loaded")
+        initializeRecorder()
+    }
+    
+    private func initializeRecorder() {
+        print("CapacitorVoiceRecorder: Initializing recorder")
+        recorder = CustomAudioRecorder { [weak self] (base64: String) in
+            guard let self = self else { return }
+            self.notifyListeners("frequencyData", data: ["base64": base64])
+        }
+        print("CapacitorVoiceRecorder: Recorder initialized successfully")
+    }
+    
     private func _requestPermission(_ showQuickLink: Bool = true) -> Bool {
-        // First, check if the permission has already been granted or denied
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         
         switch status {
         case .authorized:
-            // Permission is already granted
             return true
             
         case .denied, .restricted:
-            // Permission is denied or restricted, show dialog and return false
             if showQuickLink {
                 self._showDeniedMicrophoneDialog()
             }
-            
             return false
             
         case .notDetermined:
-            // Permission has not been determined yet, request it
             var permissionGranted = false
-            
-            // Dispatching to a background queue to not block the main thread
-            let semaphore = DispatchSemaphore(value: 0) // Create a semaphore to wait for async result
+            let semaphore = DispatchSemaphore(value: 0)
             
             AVCaptureDevice.requestAccess(for: .audio) { response in
                 permissionGranted = response
-                semaphore.signal() // Signal when the request is complete
+                semaphore.signal()
             }
             
-            // Wait for the permission request to complete
-            semaphore.wait() // Block the thread until the permission result is returned
+            semaphore.wait()
             
             if permissionGranted {
                 return true
@@ -63,7 +67,6 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
                 if showQuickLink {
                     self._showDeniedMicrophoneDialog()
                 }
-                
                 return false
             }
             
@@ -77,12 +80,13 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         #if targetEnvironment(simulator)
             print("Running on simulator: Assuming audio recording is supported.")
         #else
-        let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInMicrophone],
-                                                                mediaType: .audio,
-                                                                position: .unspecified)
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInMicrophone],
+            mediaType: .audio,
+            position: .unspecified
+        )
 
         guard !discoverySession.devices.isEmpty else {
-            print(discoverySession.devices.isEmpty)
             call.reject("DEVICE_NOT_SUPPORTED")
             return
         }
@@ -90,14 +94,10 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         
         let isGranted = self._requestPermission(call.getBool("showQuickLink") ?? true)
         
-        if(isGranted) {
-            call.resolve([
-                "status": "GRANTED",
-            ])
+        if isGranted {
+            call.resolve(["status": "GRANTED"])
         } else {
-            call.resolve([
-                "status": "NOT_GRANTED",
-            ])
+            call.resolve(["status": "NOT_GRANTED"])
         }
     }
     
@@ -105,32 +105,38 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         #if targetEnvironment(simulator)
             print("Running on simulator: Assuming audio recording is supported.")
         #else
-        let discoverySession = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInMicrophone],
-                                                                mediaType: .audio,
-                                                                position: .unspecified)
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInMicrophone],
+            mediaType: .audio,
+            position: .unspecified
+        )
         
         guard !discoverySession.devices.isEmpty else {
-            print(discoverySession.devices.isEmpty)
             call.reject("DEVICE_NOT_SUPPORTED")
             return
         }
         #endif
-
         
         let isGranted = self._requestPermission()
         
         if isGranted {
-            call.resolve([
-                "isGranted": true
-            ])
+            call.resolve(["isGranted": true])
         } else {
             call.reject("MISSING_MICROPHONE_PERMISSION")
         }
     }
     
     @objc func startRecording(_ call: CAPPluginCall) {
+        print("CapacitorVoiceRecorder: startRecording called")
         
-        if recorder.isRecording  {
+        // Reinitialize if needed
+        if recorder == nil {
+            print("CapacitorVoiceRecorder: Recorder was nil, reinitializing")
+            initializeRecorder()
+        }
+        
+        if recorder.isRecording {
+            print("CapacitorVoiceRecorder: Already recording")
             call.reject("MICROPHONE_IN_USE")
             return
         }
@@ -138,75 +144,83 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         let isGranted = self._requestPermission()
         
         if !isGranted {
+            print("CapacitorVoiceRecorder: Permission not granted")
             call.reject("MISSING_MICROPHONE_PERMISSION")
             return
         }
         
         do {
-            recorder = CustomAudioRecorder{ (base64: String) in
-                
-                self.notifyListeners("frequencyData", data: [
-                    "base64": base64
-                ])
-            }
+            // CRITICAL: DO NOT create new recorder here!
+            // Just start recording with existing instance
             try recorder.startRecording()
+            print("CapacitorVoiceRecorder: Recording started successfully")
+            call.resolve()
         } catch let error as NSError {
-            print(error)
+            print("CapacitorVoiceRecorder: Failed to start - \(error)")
             
             if error.code == 1 {
                 call.reject("MICROPHONE_IN_USE")
-                return
+            } else {
+                call.reject("UNKNOWN_ERROR: \(error.localizedDescription)")
             }
-            
-            call.reject("UNKNOWN_ERROR")
-            return
         }
-        
-        call.resolve()
     }
     
     @objc func stopRecording(_ call: CAPPluginCall) {
+        print("CapacitorVoiceRecorder: stopRecording called")
+        
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
         do {
             let obj = try recorder.stopRecording()
+            
+            print("CapacitorVoiceRecorder: Recording stopped")
+            print("- Data size: \(obj.size) bytes")
+            print("- Duration: \(obj.msDuration) ms")
+            
             call.resolve([
                 "base64": obj.data.base64EncodedString(),
                 "msDuration": obj.msDuration,
                 "size": obj.size
             ])
         } catch let error as NSError {
+            print("CapacitorVoiceRecorder: Stop failed - \(error)")
+            
             if error.code == 2 {
                 call.reject("NOT_RECORDING")
-                return
+            } else {
+                call.reject("UNKNOWN_ERROR: \(error.localizedDescription)")
             }
-            
-            call.reject("UNKNOWN_ERROR")
         }
     }
     
     @objc func pauseRecording(_ call: CAPPluginCall) {
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
         do {
             try recorder.pauseRecording()
             call.resolve()
-        } catch let error as NSError {
-            if error.code == 2 {
-                call.reject("NOT_RECORDING")
-                return
-            }
-            
+        } catch {
             call.reject("UNKNOWN_ERROR")
         }
     }
     
     @objc func resumeRecording(_ call: CAPPluginCall) {
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
         do {
             try recorder.resumeRecording()
             call.resolve()
-        } catch let error as NSError {
-            if error.code == 1 {
-                call.reject("MICROPHONE_IN_USE")
-                return
-            }
-            
+        } catch {
             call.reject("UNKNOWN_ERROR")
         }
     }
@@ -214,25 +228,27 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     @objc func getCurrentStatus(_ call: CAPPluginCall) {
         var status: String = "NOT_RECORDING"
 
-        if recorder.isPaused {
-            status = "PAUSED"
-        } else if recorder.isRecording {
-            status = "RECORDING"
+        if recorder != nil {
+            if recorder.isPaused {
+                status = "PAUSED"
+            } else if recorder.isRecording {
+                status = "RECORDING"
+            }
         }
-        
         
         call.resolve(["status": status])
     }
     
-    
-    
     private func _showDeniedMicrophoneDialog() {
         DispatchQueue.main.sync {
-            // get device language
             let language = Locale.current.languageCode?.lowercased() ?? "en"
             let translation = self.translations.getTranslation(language)
             
-            let alertController = UIAlertController(title: translation["title"], message: translation["description"], preferredStyle: .alert)
+            let alertController = UIAlertController(
+                title: translation["title"],
+                message: translation["description"],
+                preferredStyle: .alert
+            )
             
             let settingsAction = UIAlertAction(title: translation["continue"], style: .default) { _ in
                 guard let bundleId = Bundle.main.bundleIdentifier,

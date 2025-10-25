@@ -1,10 +1,288 @@
+// ============================================
+// FILE 1: CapacitorVoiceRecorderPlugin.swift
+// ============================================
+import Foundation
+import AVFoundation
+import AVFAudio
+import CoreLocation
+import Capacitor
+
+@objc(CapacitorVoiceRecorder)
+public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "CapacitorVoiceRecorderPlugin"
+    public let jsName = "CapacitorVoiceRecorder"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "requestPermission", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "canRecord", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startRecording", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopRecording", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pauseRecording", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resumeRecording", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCurrentStatus", returnType: CAPPluginReturnPromise),
+    ]
+    
+    // CRITICAL FIX: Initialize recorder only once
+    private var recorder: CustomAudioRecorder!
+    private let translations: Translations = Translations()
+    
+    public override func load() {
+        super.load()
+        print("CapacitorVoiceRecorder: Plugin loaded")
+        initializeRecorder()
+    }
+    
+    private func initializeRecorder() {
+        print("CapacitorVoiceRecorder: Initializing recorder")
+        recorder = CustomAudioRecorder { [weak self] (base64: String) in
+            guard let self = self else { return }
+            self.notifyListeners("frequencyData", data: ["base64": base64])
+        }
+        print("CapacitorVoiceRecorder: Recorder initialized successfully")
+    }
+    
+    private func _requestPermission(_ showQuickLink: Bool = true) -> Bool {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        
+        switch status {
+        case .authorized:
+            return true
+            
+        case .denied, .restricted:
+            if showQuickLink {
+                self._showDeniedMicrophoneDialog()
+            }
+            return false
+            
+        case .notDetermined:
+            var permissionGranted = false
+            let semaphore = DispatchSemaphore(value: 0)
+            
+            AVCaptureDevice.requestAccess(for: .audio) { response in
+                permissionGranted = response
+                semaphore.signal()
+            }
+            
+            semaphore.wait()
+            
+            if permissionGranted {
+                return true
+            } else {
+                if showQuickLink {
+                    self._showDeniedMicrophoneDialog()
+                }
+                return false
+            }
+            
+        @unknown default:
+            print("Unknown microphone access status.")
+            return false
+        }
+    }
+    
+    @objc func canRecord(_ call: CAPPluginCall) {
+        #if targetEnvironment(simulator)
+            print("Running on simulator: Assuming audio recording is supported.")
+        #else
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInMicrophone],
+            mediaType: .audio,
+            position: .unspecified
+        )
+
+        guard !discoverySession.devices.isEmpty else {
+            call.reject("DEVICE_NOT_SUPPORTED")
+            return
+        }
+        #endif
+        
+        let isGranted = self._requestPermission(call.getBool("showQuickLink") ?? true)
+        
+        if isGranted {
+            call.resolve(["status": "GRANTED"])
+        } else {
+            call.resolve(["status": "NOT_GRANTED"])
+        }
+    }
+    
+    @objc func requestPermission(_ call: CAPPluginCall) {
+        #if targetEnvironment(simulator)
+            print("Running on simulator: Assuming audio recording is supported.")
+        #else
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInMicrophone],
+            mediaType: .audio,
+            position: .unspecified
+        )
+        
+        guard !discoverySession.devices.isEmpty else {
+            call.reject("DEVICE_NOT_SUPPORTED")
+            return
+        }
+        #endif
+        
+        let isGranted = self._requestPermission()
+        
+        if isGranted {
+            call.resolve(["isGranted": true])
+        } else {
+            call.reject("MISSING_MICROPHONE_PERMISSION")
+        }
+    }
+    
+    @objc func startRecording(_ call: CAPPluginCall) {
+        print("CapacitorVoiceRecorder: startRecording called")
+        
+        // Reinitialize if needed
+        if recorder == nil {
+            print("CapacitorVoiceRecorder: Recorder was nil, reinitializing")
+            initializeRecorder()
+        }
+        
+        if recorder.isRecording {
+            print("CapacitorVoiceRecorder: Already recording")
+            call.reject("MICROPHONE_IN_USE")
+            return
+        }
+        
+        let isGranted = self._requestPermission()
+        
+        if !isGranted {
+            print("CapacitorVoiceRecorder: Permission not granted")
+            call.reject("MISSING_MICROPHONE_PERMISSION")
+            return
+        }
+        
+        do {
+            // CRITICAL: DO NOT create new recorder here!
+            // Just start recording with existing instance
+            try recorder.startRecording()
+            print("CapacitorVoiceRecorder: Recording started successfully")
+            call.resolve()
+        } catch let error as NSError {
+            print("CapacitorVoiceRecorder: Failed to start - \(error)")
+            
+            if error.code == 1 {
+                call.reject("MICROPHONE_IN_USE")
+            } else {
+                call.reject("UNKNOWN_ERROR: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    @objc func stopRecording(_ call: CAPPluginCall) {
+        print("CapacitorVoiceRecorder: stopRecording called")
+        
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
+        do {
+            let obj = try recorder.stopRecording()
+            
+            print("CapacitorVoiceRecorder: Recording stopped")
+            print("- Data size: \(obj.size) bytes")
+            print("- Duration: \(obj.msDuration) ms")
+            
+            call.resolve([
+                "base64": obj.data.base64EncodedString(),
+                "msDuration": obj.msDuration,
+                "size": obj.size
+            ])
+        } catch let error as NSError {
+            print("CapacitorVoiceRecorder: Stop failed - \(error)")
+            
+            if error.code == 2 {
+                call.reject("NOT_RECORDING")
+            } else {
+                call.reject("UNKNOWN_ERROR: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    @objc func pauseRecording(_ call: CAPPluginCall) {
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
+        do {
+            try recorder.pauseRecording()
+            call.resolve()
+        } catch {
+            call.reject("UNKNOWN_ERROR")
+        }
+    }
+    
+    @objc func resumeRecording(_ call: CAPPluginCall) {
+        guard recorder != nil else {
+            call.reject("NOT_RECORDING")
+            return
+        }
+        
+        do {
+            try recorder.resumeRecording()
+            call.resolve()
+        } catch {
+            call.reject("UNKNOWN_ERROR")
+        }
+    }
+    
+    @objc func getCurrentStatus(_ call: CAPPluginCall) {
+        var status: String = "NOT_RECORDING"
+
+        if recorder != nil {
+            if recorder.isPaused {
+                status = "PAUSED"
+            } else if recorder.isRecording {
+                status = "RECORDING"
+            }
+        }
+        
+        call.resolve(["status": status])
+    }
+    
+    private func _showDeniedMicrophoneDialog() {
+        DispatchQueue.main.sync {
+            let language = Locale.current.languageCode?.lowercased() ?? "en"
+            let translation = self.translations.getTranslation(language)
+            
+            let alertController = UIAlertController(
+                title: translation["title"],
+                message: translation["description"],
+                preferredStyle: .alert
+            )
+            
+            let settingsAction = UIAlertAction(title: translation["continue"], style: .default) { _ in
+                guard let bundleId = Bundle.main.bundleIdentifier,
+                      let settingsUrl = URL(string: "\(UIApplication.openSettingsURLString)/\(bundleId)") else {
+                    return
+                }
+                UIApplication.shared.open(settingsUrl)
+            }
+            
+            let cancelAction = UIAlertAction(title: translation["decline"], style: .cancel, handler: nil)
+            
+            alertController.addAction(settingsAction)
+            alertController.addAction(cancelAction)
+            
+            if let rootViewController = UIApplication.shared.keyWindow?.rootViewController {
+                rootViewController.present(alertController, animated: true, completion: nil)
+            }
+        }
+    }
+}
+
+// ============================================
+// FILE 2: CustomAudioRecorder.swift
+// ============================================
 import AVFoundation
 import Accelerate
 
 class CustomAudioRecorder {
     private let targetSampleRate: Double = 44100
     private let targetChannelCount: AVAudioChannelCount = 1
-    private let fftSize = 4096  // Reduced from 8192 for better iOS compatibility
+    private let fftSize = 4096
     
     private let engine = AVAudioEngine()
     private var audioFile: AVAudioFile?
@@ -26,64 +304,57 @@ class CustomAudioRecorder {
     private func configureAudioSession() {
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            // Use .record mode for better recording quality
             try audioSession.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
             try audioSession.setPreferredSampleRate(targetSampleRate)
             try audioSession.setPreferredInputNumberOfChannels(Int(targetChannelCount))
             
-            // Set buffer duration to match our FFT size
             let bufferDuration = Double(fftSize) / targetSampleRate
             try audioSession.setPreferredIOBufferDuration(bufferDuration)
             
             try audioSession.setActive(true)
             
-            print("Audio session configured:")
+            print("CustomAudioRecorder: Audio session configured")
             print("- Sample rate: \(audioSession.sampleRate)")
             print("- Input channels: \(audioSession.inputNumberOfChannels)")
             print("- IO buffer duration: \(audioSession.ioBufferDuration)")
         } catch {
-            print("Audio session configuration failed: \(error)")
+            print("CustomAudioRecorder: Audio session config failed - \(error)")
         }
     }
     
     func startRecording() throws {
         guard !isRecording else { throw RecorderError.alreadyRecording }
         
-        // Get the actual format from the input node
         let inputFormat = engine.inputNode.inputFormat(forBus: 0)
         
-        print("Input format:")
+        print("CustomAudioRecorder: Input format")
         print("- Sample rate: \(inputFormat.sampleRate)")
         print("- Channels: \(inputFormat.channelCount)")
         print("- Format: \(inputFormat.commonFormat.rawValue)")
         
-        // Create the output file with compatible format
         let file = try self.setupAudioFile(inputFormat: inputFormat)
         self.audioFile = file
         
-        // Use a buffer size that matches iOS preferences
-        let bufferSize = AVAudioFrameCount(fftSize)
+        // CRITICAL: Use actual hardware buffer size, not our FFT size
+        let bufferSize = AVAudioFrameCount(4096)
         
         engine.inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) {
             [weak self] (buffer, time) in
             guard let self = self, let audioFile = self.audioFile else { return }
             
-            // Write to file on processing queue to avoid blocking
+            // Write to file
             self.processingQueue.async {
                 do {
                     try audioFile.write(from: buffer)
                 } catch {
-                    print("Failed to write audio buffer: \(error)")
-                    print("Buffer format: \(buffer.format)")
-                    print("File format: \(audioFile.processingFormat)")
+                    print("CustomAudioRecorder: Write failed - \(error)")
                 }
             }
             
-            // Process frequencies
+            // Process frequencies - handle variable buffer sizes
             let magnitudes = self.analyzer.process(buffer: buffer)
             let base64 = Data(magnitudes).base64EncodedString()
             
-            // Call callback on main thread if needed
             DispatchQueue.main.async {
                 self.callback(base64)
             }
@@ -95,16 +366,13 @@ class CustomAudioRecorder {
         isRecording = true
         isPaused = false
         
-        print("Recording started successfully")
+        print("CustomAudioRecorder: Recording started")
     }
     
     private func setupAudioFile(inputFormat: AVAudioFormat) throws -> AVAudioFile {
-        // Create unique file URL
         self.fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("recording_\(Date().timeIntervalSince1970).wav")
         
-        // Use format compatible with iOS recording
-        // PCM format with proper bit depth for the input format
         let isFloat = inputFormat.commonFormat == .pcmFormatFloat32
         let bitDepth = isFloat ? 32 : 16
         
@@ -118,73 +386,70 @@ class CustomAudioRecorder {
             AVLinearPCMIsNonInterleaved: false
         ]
         
-        print("Creating audio file with settings:")
+        print("CustomAudioRecorder: Creating audio file")
         settings.forEach { print("- \($0.key): \($0.value)") }
         
         do {
             let file = try AVAudioFile(forWriting: fileURL, settings: settings)
-            print("Audio file created at: \(fileURL.path)")
+            print("CustomAudioRecorder: File created at \(fileURL.path)")
             return file
         } catch {
-            print("Failed to create audio file: \(error)")
+            print("CustomAudioRecorder: File creation failed - \(error)")
             throw RecorderError.invalidFormat
         }
     }
     
     func pauseRecording() throws {
         guard isRecording, !isPaused else { throw RecorderError.invalidState }
-        
         engine.pause()
         isPaused = true
-        print("Recording paused")
+        print("CustomAudioRecorder: Paused")
     }
     
     func resumeRecording() throws {
         guard isRecording, isPaused else { throw RecorderError.invalidState }
-        
         try engine.start()
         isPaused = false
-        print("Recording resumed")
+        print("CustomAudioRecorder: Resumed")
     }
     
     func stopRecording() throws -> RecordingResult {
         guard isRecording else { throw RecorderError.notRecording }
         
-        print("Stopping recording...")
+        print("CustomAudioRecorder: Stopping...")
         
-        // Stop engine first
         engine.stop()
         engine.inputNode.removeTap(onBus: 0)
         
-        // Wait a moment for any pending writes to complete
+        // Wait for pending writes
         processingQueue.sync { }
         
-        // Close the audio file to ensure all data is flushed
+        // Close file to flush data
         audioFile = nil
         
         isRecording = false
         isPaused = false
         
-        // Verify file exists and has content
+        // Small delay to ensure file is written
+        Thread.sleep(forTimeInterval: 0.1)
+        
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            print("Recording file does not exist at path: \(fileURL.path)")
+            print("CustomAudioRecorder: File not found at \(fileURL.path)")
             throw RecorderError.fileNotFound
         }
         
-        // Get file attributes
         let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
         let fileSize = attributes[.size] as? UInt64 ?? 0
-        print("Recording file size: \(fileSize) bytes")
+        print("CustomAudioRecorder: File size: \(fileSize) bytes")
         
         if fileSize < 1000 {
-            print("WARNING: Recording file is suspiciously small")
+            print("CustomAudioRecorder: WARNING - File is only \(fileSize) bytes!")
         }
         
-        // Read the data
         let data = try Data(contentsOf: fileURL)
         let duration = Date().timeIntervalSince(recordingStartTime ?? Date())
         
-        print("Recording stopped:")
+        print("CustomAudioRecorder: Stopped")
         print("- Duration: \(duration) seconds")
         print("- Data size: \(data.count) bytes")
         
@@ -204,7 +469,6 @@ class CustomAudioRecorder {
     }
 }
 
-// Error Handling
 extension CustomAudioRecorder {
     enum RecorderError: Error {
         case alreadyRecording
