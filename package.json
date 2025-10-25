@@ -13,13 +13,13 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "LgiccCapacitorVoiceRecorder.podspec"
+    "ios/Sandip3008CapacitorVoiceRecorder.podspec"
   ],
   "author": "Daniel Amzovski",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lgicc/capacitor-voice-recorder.git"
+    "url": "git+https://github.com/sandip-3008/capacitor-voice-recorder.git"
   },
   "bugs": {
     "url": "https://github.com/lgicc/capacitor-voice-recorder/issues"
