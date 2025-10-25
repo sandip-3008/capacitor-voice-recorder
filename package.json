@@ -13,7 +13,7 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "ios/Sandip3008CapacitorVoiceRecorder.podspec"
+    "Sandip3008CapacitorVoiceRecorder.podspec"
   ],
   "author": "Daniel Amzovski",
   "license": "MIT",
