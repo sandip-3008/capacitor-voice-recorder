@@ -1,4 +1,7 @@
 import { CapacitorVoiceRecorder } from '@lgicc/capacitor-voice-recorder';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const currentStatusEl = document.getElementById('🪪');
 const canvasEl = document.getElementById('🖼️');

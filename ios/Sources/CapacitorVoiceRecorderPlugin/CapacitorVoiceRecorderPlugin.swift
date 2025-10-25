@@ -18,24 +18,16 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getCurrentStatus", returnType: CAPPluginReturnPromise),
     ]
     
-    // CRITICAL FIX: Initialize recorder only once
-    private var recorder: CustomAudioRecorder!
-    private let translations: Translations = Translations()
-    
-    public override func load() {
-        super.load()
-        print("CapacitorVoiceRecorder: Plugin loaded")
-        initializeRecorder()
-    }
-    
-    private func initializeRecorder() {
+    // CRITICAL FIX: Use lazy initialization to create recorder only once
+    private lazy var recorder: CustomAudioRecorder = {
         print("CapacitorVoiceRecorder: Initializing recorder")
-        recorder = CustomAudioRecorder { [weak self] (base64: String) in
+        return CustomAudioRecorder { [weak self] (base64: String) in
             guard let self = self else { return }
             self.notifyListeners("frequencyData", data: ["base64": base64])
         }
-        print("CapacitorVoiceRecorder: Recorder initialized successfully")
-    }
+    }()
+    
+    private let translations: Translations = Translations()
     
     private func _requestPermission(_ showQuickLink: Bool = true) -> Bool {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -87,6 +79,7 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         )
 
         guard !discoverySession.devices.isEmpty else {
+            print(discoverySession.devices.isEmpty)
             call.reject("DEVICE_NOT_SUPPORTED")
             return
         }
@@ -112,6 +105,7 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         )
         
         guard !discoverySession.devices.isEmpty else {
+            print(discoverySession.devices.isEmpty)
             call.reject("DEVICE_NOT_SUPPORTED")
             return
         }
@@ -129,12 +123,6 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     @objc func startRecording(_ call: CAPPluginCall) {
         print("CapacitorVoiceRecorder: startRecording called")
         
-        // Reinitialize if needed
-        if recorder == nil {
-            print("CapacitorVoiceRecorder: Recorder was nil, reinitializing")
-            initializeRecorder()
-        }
-        
         if recorder.isRecording {
             print("CapacitorVoiceRecorder: Already recording")
             call.reject("MICROPHONE_IN_USE")
@@ -150,8 +138,7 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         }
         
         do {
-            // CRITICAL: DO NOT create new recorder here!
-            // Just start recording with existing instance
+            // CRITICAL: Just start recording - recorder is already initialized via lazy property
             try recorder.startRecording()
             print("CapacitorVoiceRecorder: Recording started successfully")
             call.resolve()
@@ -168,11 +155,6 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     
     @objc func stopRecording(_ call: CAPPluginCall) {
         print("CapacitorVoiceRecorder: stopRecording called")
-        
-        guard recorder != nil else {
-            call.reject("NOT_RECORDING")
-            return
-        }
         
         do {
             let obj = try recorder.stopRecording()
@@ -198,42 +180,38 @@ public class CapacitorVoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     }
     
     @objc func pauseRecording(_ call: CAPPluginCall) {
-        guard recorder != nil else {
-            call.reject("NOT_RECORDING")
-            return
-        }
-        
         do {
             try recorder.pauseRecording()
             call.resolve()
-        } catch {
-            call.reject("UNKNOWN_ERROR")
+        } catch let error as NSError {
+            if error.code == 2 {
+                call.reject("NOT_RECORDING")
+            } else {
+                call.reject("UNKNOWN_ERROR")
+            }
         }
     }
     
     @objc func resumeRecording(_ call: CAPPluginCall) {
-        guard recorder != nil else {
-            call.reject("NOT_RECORDING")
-            return
-        }
-        
         do {
             try recorder.resumeRecording()
             call.resolve()
-        } catch {
-            call.reject("UNKNOWN_ERROR")
+        } catch let error as NSError {
+            if error.code == 1 {
+                call.reject("MICROPHONE_IN_USE")
+            } else {
+                call.reject("UNKNOWN_ERROR")
+            }
         }
     }
     
     @objc func getCurrentStatus(_ call: CAPPluginCall) {
         var status: String = "NOT_RECORDING"
 
-        if recorder != nil {
-            if recorder.isPaused {
-                status = "PAUSED"
-            } else if recorder.isRecording {
-                status = "RECORDING"
-            }
+        if recorder.isPaused {
+            status = "PAUSED"
+        } else if recorder.isRecording {
+            status = "RECORDING"
         }
         
         call.resolve(["status": status])
